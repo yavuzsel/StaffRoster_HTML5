@@ -1,0 +1,236 @@
+<!--
+    JBoss, Home of Professional Open Source
+    Copyright 2013, Red Hat, Inc. and/or its affiliates, and individual
+    contributors by the @authors tag. See the copyright.txt in the
+    distribution for a full listing of individual contributors.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<title>StaffRoster</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+<!-- Set the tab, home page, shortcut icons -->
+<link rel="Shortcut Icon" href="img/aerogear_icon_16x.png">
+<link rel="apple-touch-icon" href="img/aerogear_avatar_48px.png" />
+
+<!-- For minification, comment out this link -->
+<!-- Shared styles -->
+<link rel="stylesheet" href="css/screen.css" />
+
+<!-- Set viewport scaling and zoom features -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<script type="text/javascript" src="js/libs/modernizr-2.6.2.min.js"></script>
+<script type="text/javascript">
+	        Modernizr.load([{
+	            //Load CDN hosted jQuery or fall back to local file.
+	            /*--------Note-----------
+	             This approach should only be used if you trust the source of where the resource (JavaScript) is located.
+	             In this case, use of the google CDN is much faster if your user's browser already has this file cached.
+	             If they don't have it cached, try to load it from the CDN as this will be faster if the user is
+	             located closer to a CDN than you currently hosted server.
+	             */
+	            load: [
+			"//ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js",
+	                "js/libs/lodash.min.js",
+	                "js/libs/aerogear.min.js",
+	                // Minification - See Readme for details
+	                // For minification, comment out this file
+	                "js/app.js"
+	                // For minification, uncomment this file
+	                // "js/app.min.js"
+	            ],
+	            complete: function() {
+	                if ( !window.jQuery ) {
+	                    //In production, you would want to fall back to a minified file.
+	                    //We fall back to the full version because Eclipse reports false errors in some minified JavaScript files.
+	                    yepnope( "js/libs/jquery-1.7.1.min.js" );
+	                }
+	            }
+	        },{
+	            //device detection and asynchronous script loading
+	            /*--------Note-----------
+	             Here we're using the yepnope framework which gives us the ability to load scripts dynamically, based on
+	             Modernizr's results.
+	             With Modernizr, we use media queries and touch detection to see if we are on a mobile, touch based device
+	             or if we're at anything less than 480px.. this gives us a mobile ui on desktop browsers when resized to <480px
+	             width for testing.
+	             */
+	            test: Modernizr.mq( "only all and (max-width: 6400px)" ),
+	            yep: {
+	                //assign labeled callbacks for later execution after script loads.
+	                //we are on mobile device so load appropriate CSS
+	                "jqmcss": "css/jquery.mobile-1.1.0.min.css",
+	                // For minification, uncomment this line
+	                //"mcss": "css/m.screen.min.css"
+	                // For minification, comment out this line
+	                "mcss": "css/m.screen.css"
+	            },
+	            nope: {
+	                //we are on desktop
+	                // For minification, uncomment this line
+	                //"scss": "css/d.screen.min.css"
+	                // For minification, comment out this line
+	                "scss": "css/d.screen.css"
+	            },
+	            callback: {
+	                //use the labeled callbacks from above, and load jQuery Mobile
+	                "jqmcss": function( url, result, key ) {
+	                    yepnope({
+		                    // use 1.3.1 for jquery mobile autocomplete, easier :)
+	                        load: "http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.js",
+	                        complete: function() {
+	                        	if (! $.mobile )
+	                        		yepnope( "js/libs/jquery.mobile-1.1.0.min.js" );
+	                        	else
+	                            	console.log( "jQuery Mobile Loaded" );
+	                        }
+	                    });
+	                },
+	                "scss": function( url, result, key ) {
+	                    $( document ).ready( function() {
+	                        //here we are moving content around based on the browser/device.
+	                        $( "aside" ).insertAfter( $( "section" ) );
+	                    });
+	                }
+	            },
+	            complete: function() {
+	                $( document ).ready( function() {
+	                    //setup the app after all scripts have loaded
+	
+	                    $( "#container" ).show();
+	                    //Fetches the initial member data and populates the table using lodash templates
+	                    //updateMemberTable();
+	
+	                    $( "#autocomplete" ).on( "listviewbeforefilter", function ( e, data ) {
+	        				var $ul = $( this ),
+	        					$input = $( data.input ),
+	        					value = $input.val(),
+	        					html = "";
+	        				$ul.html( "" );
+	        				if ( value && value.length > 2 ) {
+	        					$ul.html( "<li><div class='ui-loader'><span class='ui-icon ui-icon-loading'></span></div></li>" );
+	        					$ul.listview( "refresh" );
+	        					// for a simple task, jquery ajax call is not so complicated, but we will go with aerogear :)
+	        					/*$.ajax({
+	        						url: "http://10.193.23.183/aerogear/get_data_simple.php",
+	        						dataType: "jsonp",
+	        						crossDomain: true,
+	        						data: {
+	        							query: $input.val(),
+	        							clienttype: 'html5'
+	        						}
+	        					})
+	        					.fail( function(jqXHR, textStatus) {
+	        						  console.log( "Request failed: " + textStatus );
+	        					})
+	        					.then( function ( response ) {
+	        						$.each( response, function ( i, val ) {
+	        							$.each( val, function ( j, empl ) {
+	            							if(j == "cn")
+	                							html += "<li><a href=\"#info-aside\" data-rel=\"dialog\">" + empl + "</a></li>";
+	            						});
+	        						});
+	        						$ul.html( html );
+	        						$ul.listview( "refresh" );
+	        						$ul.trigger( "updatelayout");
+	        					});*/
+	        					updateEmployeeTable($ul, $input.val());
+	        				}
+	        			});
+	                });
+	                
+	                $.fn.serializeObject = function() {
+	                    var o = {};
+	                    var a = this.serializeArray();
+	                    $.each(a, function() {
+	                        if (o[this.name]) {
+	                            if (!o[this.name].push) {
+	                                o[this.name] = [o[this.name]];
+	                            }
+	                            o[this.name].push(this.value || '');
+	                        } else {
+	                            o[this.name] = this.value || '';
+	                        }
+	                    });
+	                    return o;
+	                };
+	            }
+	        }]);
+    </script>
+</head>
+<body>
+	<div id="container" style="display: none">
+		<section>
+			<article id="intro-art" data-role="page" data-theme="a">
+				<!-- Header -->
+				<div data-role="header" class="header">
+					<h3>StaffRoster</h3>
+				</div>
+				<!-- /Header -->
+
+				<div data-role="content">
+					<ul id="autocomplete" data-role="listview" data-inset="true"
+						data-filter="true" data-filter-placeholder="Search Employee..."
+						data-filter-theme="d"></ul>
+				</div>
+
+				<!-- Footer -->
+				<div class="footer" data-role="footer" data-position="fixed">
+					<br /> <br />
+				</div>
+				<!-- /Footer -->
+			</article>
+
+			<!-- New HTML5 aside tag -->
+			<aside id="info-aside" data-role="page" data-theme="a">
+				<!-- Header -->
+				<div data-role="header">
+					<h3>Employee</h3>
+				</div>
+				<!-- /Header -->
+
+				<div data-role="content" id="employee_info">
+					<div style="width: 70%; margin: auto;">
+						<table>
+							<tr>
+								<td style="height: 25px;">Name:</td>
+								<td><div id="name"></div></td>
+							</tr>
+							<tr>
+								<td style="height: 25px;">Location:</td>
+								<td><div id="location"></div></td>
+							</tr>
+							<tr>
+								<td style="height: 25px;">eMail:</td>
+								<td><div id="email"></div></td>
+							</tr>
+						</table>
+					</div>
+				</div>
+			</aside>
+		</section>
+	</div>
+
+	<script type="text/template" id="employees-tmpl">
+ 	<% _.each( employees, function ( empl ) {
+        	_.each( empl, function ( val, i ) {
+            	if(i == "cn"){%>
+                	<li><a href="#info-aside" data-rel="dialog" onclick="updateDialog('<%=val%>')"><%=val%></a></li>
+				<%}
+            });
+	}); %>
+    </script>
+</body>
+</html>
